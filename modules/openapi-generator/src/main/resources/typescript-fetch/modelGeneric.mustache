@@ -1,4 +1,5 @@
 import { exists, mapValues } from '../runtime';
+import moment from "moment";
 {{#hasImports}}
 import {
     {{#imports}}
@@ -33,7 +34,7 @@ export interface {{classname}} {{#parent}}extends {{{parent}}} {{/parent}}{
      * @type {{=<% %>=}}{<%&datatype%>}<%={{ }}=%>
      * @memberof {{classname}}
      */
-    {{#isReadOnly}}readonly {{/isReadOnly}}{{name}}{{^required}}?{{/required}}: {{#isEnum}}{{{datatypeWithEnum}}}{{/isEnum}}{{^isEnum}}{{{datatype}}}{{#isNullable}} | null{{/isNullable}}{{/isEnum}};
+    {{#isReadOnly}}readonly {{/isReadOnly}}{{name}}{{^required}}?{{/required}}: {{#isEnum}}{{{datatypeWithEnum}}}{{/isEnum}}{{^isEnum}}{{#isDateTime}}moment.Moment{{/isDateTime}}{{^isDateTime}}{{#isDate}}moment.Moment{{/isDate}}{{^isDate}}{{{datatype}}}{{#isNullable}} | null{{/isNullable}}{{/isDate}}{{/isDateTime}}{{/isEnum}};
 {{/vars}}
 }
 
@@ -63,10 +64,17 @@ export function {{classname}}FromJSONTyped(json: any, ignoreDiscriminator: boole
         {{#vars}}
         {{#isPrimitiveType}}
         {{#isDate}}
-        '{{name}}': {{^required}}!exists(json, '{{baseName}}') ? undefined : {{/required}}({{#isNullable}}json['{{baseName}}'] === null ? null : {{/isNullable}}new Date(json['{{baseName}}'])),
+        '{{name}}': {{^required}}!exists(json, '{{baseName}}') ? undefined : {{/required}}moment(json['{{baseName}}']),
         {{/isDate}}
         {{#isDateTime}}
-        '{{name}}': {{^required}}!exists(json, '{{baseName}}') ? undefined : {{/required}}({{#isNullable}}json['{{baseName}}'] === null ? null : {{/isNullable}}new Date(json['{{baseName}}'])),
+        {{#vendorExtensions}}
+        {{#x-format-time}}
+        '{{name}}': {{^required}}!exists(json, '{{baseName}}') ? undefined : {{/required}}moment.utc(json['{{baseName}}'], moment.HTML5_FMT.TIME_SECONDS).local(),
+        {{/x-format-time}}
+        {{^x-format-time}}
+        '{{name}}': {{^required}}!exists(json, '{{baseName}}') ? undefined : {{/required}}moment(json['{{baseName}}']),
+        {{/x-format-time}}
+        {{/vendorExtensions}}
         {{/isDateTime}}
         {{^isDate}}
         {{^isDateTime}}
@@ -116,7 +124,7 @@ export function {{classname}}ToJSON(value?: {{classname}} | null): any {
         {{#vars}}
         {{^isReadOnly}}
         {{#isPrimitiveType}}
-        '{{baseName}}': {{#isDate}}{{^required}}value.{{name}} === undefined ? undefined : {{/required}}({{#isNullable}}value.{{name}} === null ? null : {{/isNullable}}value.{{name}}.toISOString().substr(0,10)){{/isDate}}{{#isDateTime}}{{^required}}value.{{name}} === undefined ? undefined : {{/required}}({{#isNullable}}value.{{name}} === null ? null : {{/isNullable}}value.{{name}}.toISOString()){{/isDateTime}}{{^isDate}}{{^isDateTime}}value.{{name}}{{/isDateTime}}{{/isDate}},
+        '{{baseName}}': {{#isDate}}{{^required}}value.{{name}} === undefined ? undefined : {{/required}}({{#isNullable}}value.{{name}} === null ? null : {{/isNullable}}value.{{name}}.toISOString().substr(0,10)){{/isDate}}{{#isDateTime}}{{^required}}value.{{name}} === undefined ? undefined : {{/required}}({{#isNullable}}value.{{name}} === null ? null : {{/isNullable}}value.{{name}}{{#x-format-time}}.utc().format("HH:mm:00"){{/x-format-time}}{{^x-format-time}}.toISOString(){{/x-format-time}}){{/isDateTime}}{{^isDate}}{{^isDateTime}}value.{{name}}{{/isDateTime}}{{/isDate}},
         {{/isPrimitiveType}}
         {{^isPrimitiveType}}
         {{#isListContainer}}
